@@ -33,6 +33,11 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
+        <footer className="w-full py-8 text-center mt-auto">
+          <p className="font-body text-xs text-ink/40">
+            Built by Ademola · <a href="https://x.com/rynyxxx" target="_blank" rel="noopener noreferrer" className="hover:text-ink/70 transition-colors duration-150 font-bold">@rynyxxx</a>
+          </p>
+        </footer>
       </div>
       <Toaster position="bottom-center" />
     </BrowserRouter>

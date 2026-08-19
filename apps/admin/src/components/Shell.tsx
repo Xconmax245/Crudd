@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router';
+import { useState } from 'react';
 import {
   LayoutDashboard,
   Library,
@@ -28,6 +29,30 @@ export default function Shell() {
   const { me, signOut } = useAuth();
   const navigate = useNavigate();
 
+  // EGG 3: Admin Logo Easter Egg
+  const [clicks, setClicks] = useState(0);
+  const [lastClick, setLastClick] = useState(0);
+  const [wobble, setWobble] = useState(false);
+  const [showCredit, setShowCredit] = useState(false);
+
+  const handleLogoClick = () => {
+    const now = Date.now();
+    if (now - lastClick > 1000) {
+      setClicks(1);
+    } else {
+      const newClicks = clicks + 1;
+      setClicks(newClicks);
+      if (newClicks >= 5 && !showCredit) {
+        setWobble(true);
+        setShowCredit(true);
+        setTimeout(() => setWobble(false), 500);
+        setTimeout(() => setShowCredit(false), 2000);
+        setClicks(0);
+      }
+    }
+    setLastClick(now);
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/login', { replace: true });
@@ -37,9 +62,18 @@ export default function Shell() {
     <div className="flex min-h-screen">
       {/* Sidebar */}
       <aside className="flex w-64 shrink-0 flex-col border-r border-line bg-paper">
-        <div className="flex h-16 items-center gap-2 border-b border-line px-6">
-          <span className="font-display text-xl font-bold text-brand">CRUDD</span>
+        <div 
+          className="flex h-16 items-center gap-2 border-b border-line px-6 cursor-pointer relative"
+          onClick={handleLogoClick}
+        >
+          <span className={`font-display text-xl font-bold text-brand transition-transform ${wobble ? 'animate-bounce' : ''}`}>CRUDD</span>
           <span className="rounded bg-brand/10 px-1.5 py-0.5 text-xs font-semibold text-brand">ADMIN</span>
+          
+          {showCredit && (
+            <div className="absolute top-full left-6 mt-1 bg-ink text-cream text-xs font-bold py-1.5 px-3 rounded shadow-lg whitespace-nowrap z-50 animate-in fade-in slide-in-from-top-2">
+              Made with too much coffee by Ademola ☕
+            </div>
+          )}
         </div>
         <nav className="flex-1 space-y-1 px-3 py-4">
           {NAV.map((item) => (

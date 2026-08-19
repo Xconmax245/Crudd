@@ -11,6 +11,7 @@ import { useSyncedTimer } from '../hooks/useSyncedTimer';
 import { getUsername } from '../lib/session';
 import LoadingBlob from '../components/LoadingBlob';
 import { useTitle } from '../hooks/useTitle';
+import { ChatPanel } from '../components/ChatPanel';
 
 // --- Avatar Assignment -----------------------------------------------------
 
@@ -109,6 +110,11 @@ export default function MatchRoom() {
           <LobbyView key="lobby" engine={engine} />
         )}
       </AnimatePresence>
+
+      {/* Conditionally render ChatPanel only in Lobby or Ended phases */}
+      {(!countdown && !question && !reveal) && (
+        <ChatPanel engine={engine} />
+      )}
     </div>
   );
 }
@@ -419,6 +425,15 @@ function RevealView({ engine }: { engine: ReturnType<typeof useMatchEngine> }) {
         </div>
       )}
 
+      {/* EGG 2: Secret Question Explanation */}
+      {reveal.questionText === 'Who built CRUDD?' && (
+        <div className="mb-8 p-4 bg-yellow/20 border-2 border-yellow rounded-crudd text-center">
+          <p className="font-bold text-ink">
+            CRUDD was built solo by Ademola. Follow the creator on X: <a href="https://x.com/rynyxxx" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink/70">@rynyxxx</a> 👾
+          </p>
+        </div>
+      )}
+
       <Leaderboard entries={reveal.leaderboard} sessionId={sessionId} compact />
 
       <div className="mt-8">
@@ -460,6 +475,10 @@ function ResultsView({
   const [tab, setTab] = useState<'scores' | 'stats'>('scores');
   const winner = leaderboard[0];
   const iWon = winner?.sessionId === sessionId;
+  
+  // EGG 4: Perfect Score detection
+  const myStats = stats.find(s => s.sessionId === sessionId);
+  const iAmPerfect = myStats?.accuracy === 100;
 
   return (
     <motion.main
@@ -500,7 +519,7 @@ function ResultsView({
       </div>
 
       {tab === 'scores' ? (
-        <Leaderboard entries={leaderboard} sessionId={sessionId} />
+        <Leaderboard entries={leaderboard} sessionId={sessionId} isPerfectScore={iAmPerfect} />
       ) : (
         <StatsBoard stats={stats} sessionId={sessionId} />
       )}
@@ -566,10 +585,12 @@ function Leaderboard({
   entries,
   sessionId,
   compact = false,
+  isPerfectScore = false,
 }: {
   entries: LeaderboardEntry[];
   sessionId: string;
   compact?: boolean;
+  isPerfectScore?: boolean;
 }) {
   const medals = ['bg-yellow', 'bg-ink/10', 'bg-orange'];
   const reduceMotion = useReducedMotion();
@@ -599,7 +620,22 @@ function Leaderboard({
                   {e.rank}
                 </span>
                 <PlayerAvatar sessionId={e.sessionId} className="w-8 h-8" />
-                <span className="flex-1 truncate">{e.username || 'Guest'}{isMe && ' (you)'}</span>
+                <div className="flex-1 flex flex-col min-w-0">
+                  <div className="flex items-center truncate">
+                    <span className="truncate">{e.username || 'Guest'}</span>
+                    {isMe && (
+                      <span className="shrink-0 whitespace-nowrap ml-1">
+                        (you)
+                        {!compact && isPerfectScore && ' · CRUDD God'}
+                      </span>
+                    )}
+                  </div>
+                  {!compact && isMe && isPerfectScore && (
+                    <span className="text-xs opacity-70 italic font-medium mt-1 truncate">
+                      Built by a guy who probably couldn't get 100% himself. <a href="https://x.com/rynyxxx" target="_blank" rel="noopener noreferrer" className="underline hover:text-cream/70">@rynyxxx</a>
+                    </span>
+                  )}
+                </div>
                 <span className="font-display font-black">{e.score}</span>
               </motion.div>
             );

@@ -353,6 +353,17 @@ export class MatchEngine {
       options: r.shuffledOptions as string[],
       correctIndex: r.shuffledCorrectIndex,
     }));
+    
+    // EGG 2: 5% chance to inject creator question as the final question
+    if (questions.length > 0 && Math.random() < 0.05) {
+      questions[questions.length - 1] = {
+        questionId: 'easter-egg-creator',
+        questionText: 'Who built CRUDD?',
+        options: ['Some random dev', 'An AI', 'Ademola (@rynyxxx)', 'Nobody knows'],
+        correctIndex: 2,
+      };
+    }
+    
     this.questionCache.set(challengeId, questions);
     return questions;
   }

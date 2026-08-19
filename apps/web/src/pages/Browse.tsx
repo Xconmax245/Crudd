@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router';
 import type { QuestionBank } from '@crudd/shared';
-import { ArrowRight, ArrowLeft } from 'lucide-react';
+import { ArrowRight, ArrowLeft, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 
 import LoadingBlob from '../components/LoadingBlob';
 
@@ -20,6 +22,42 @@ export default function Browse() {
       return res.json();
     },
   });
+
+  // EGG 5: Idle on Browse Page
+  const [isIdle, setIsIdle] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem('crudd_idle_found')) return;
+
+    let timeout: ReturnType<typeof setTimeout>;
+    let resetTimer = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        setIsIdle(true);
+        sessionStorage.setItem('crudd_idle_found', 'true');
+        
+        // Hide fake card after 2 seconds
+        setTimeout(() => {
+          setIsIdle(false);
+        }, 2000);
+      }, 30000);
+    };
+
+    resetTimer();
+
+    const events = ['mousemove', 'keydown', 'touchstart'];
+    const handleActivity = () => {
+      if (!isIdle) resetTimer();
+    };
+
+    events.forEach(e => window.addEventListener(e, handleActivity));
+
+    return () => {
+      clearTimeout(timeout);
+      events.forEach(e => window.removeEventListener(e, handleActivity));
+    };
+  }, [isIdle]);
 
   return (
     <div className="min-h-screen pb-20">
@@ -54,7 +92,28 @@ export default function Browse() {
             No question banks found. Please run the seed script.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
+            {isIdle && banks && banks.length > 0 && (
+              <div 
+                className="absolute top-0 left-0 w-full md:w-[calc(50%-0.75rem)] h-full z-10 cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsIdle(false);
+                  setShowModal(true);
+                }}
+              >
+                <div className="block border-3 border-ink rounded-crudd bg-yellow p-6 shadow-hard animate-pulse h-full">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="inline-block px-3 py-1 bg-white text-ink text-xs font-bold uppercase tracking-wider rounded-crudd border-2 border-ink">
+                      Mystery
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold font-display mb-2">Who Made This?</h3>
+                  <p className="opacity-70 font-medium">1 question · Tap to find out</p>
+                </div>
+              </div>
+            )}
+            
             {banks?.map((bank) => (
               <Link
                 key={bank.id}
@@ -76,6 +135,40 @@ export default function Browse() {
           </div>
         )}
       </main>
+
+      {/* Egg 5 Modal */}
+      <AnimatePresence>
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-ink/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-cream border-3 border-ink rounded-crudd shadow-[8px_8px_0px_#0A0A0A] p-8 max-w-sm w-full text-center relative"
+            >
+              <button 
+                onClick={() => setShowModal(false)}
+                className="absolute top-4 right-4 p-1 hover:bg-ink/10 rounded-crudd transition-colors"
+              >
+                <X size={24} />
+              </button>
+              <div className="text-4xl mb-4">👋</div>
+              <h3 className="text-2xl font-black font-display mb-2">Hey.</h3>
+              <p className="font-bold text-lg mb-6">
+                Ademola built this.
+              </p>
+              <a 
+                href="https://x.com/rynyxxx" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="block w-full bg-cyan text-ink font-bold py-3 rounded-crudd border-3 border-ink shadow-[4px_4px_0px_#0A0A0A] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#0A0A0A] transition-all"
+              >
+                @rynyxxx on X
+              </a>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

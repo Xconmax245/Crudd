@@ -82,9 +82,12 @@ export default function Footer() {
 
         {/* Bottom */}
         <div className="footer_bottom flex flex-wrap items-center justify-between gap-4 py-6">
-          <div className="footer_copyright-wrap">
+          <div className="footer_copyright-wrap flex flex-col gap-1">
             <p className="footer_copyright font-body text-xs text-cream/30">
               &copy; <span>{year}</span> CRUDD. All rights reserved.
+            </p>
+            <p className="footer_copyright font-body text-xs text-cream/30">
+              Built by Ademola · <a href="https://x.com/rynyxxx" target="_blank" rel="noopener noreferrer" className="hover:text-cream/60 transition-colors duration-150">@rynyxxx</a>
             </p>
           </div>
 

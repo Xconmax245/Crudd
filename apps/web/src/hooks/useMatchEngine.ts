@@ -10,6 +10,7 @@ import {
   type MatchErrorPayload,
   type CountdownPayload,
   type LobbyCancelledPayload,
+  type ChatMessagePayload,
 } from '@crudd/shared';
 import { createMatchSocket } from '../lib/socket';
 import { getSessionId, getUsername } from '../lib/session';
@@ -30,6 +31,7 @@ export interface MatchEngineState {
   /** Reason string when the lobby is cancelled before it ever starts. */
   cancelled: string | null;
   error: string | null;
+  chatMessages: ChatMessagePayload[];
 }
 
 
@@ -39,6 +41,7 @@ export interface MatchEngineApi extends MatchEngineState {
   start: () => void;
   submit: (selectedIndex: number) => void;
   next: () => void;
+  sendChatMessage: (message: string) => void;
 }
 
 /**
@@ -60,6 +63,7 @@ export function useMatchEngine(slug: string): MatchEngineApi {
   const [ended, setEnded] = useState<MatchEndPayload | null>(null);
   const [cancelled, setCancelled] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessagePayload[]>([]);
 
 
   useEffect(() => {
@@ -68,6 +72,7 @@ export function useMatchEngine(slug: string): MatchEngineApi {
 
     const join = () => {
       setConnection('connected');
+      setChatMessages([]);
       socket.emit(MATCH_EVENTS.JOIN, {
         slug,
         sessionId,
@@ -124,6 +129,10 @@ export function useMatchEngine(slug: string): MatchEngineApi {
       setError(payload.message);
     });
 
+    socket.on(MATCH_EVENTS.CHAT_RECEIVE, (payload: ChatMessagePayload) => {
+      setChatMessages((prev) => [...prev, payload]);
+    });
+
 
     socket.connect();
 
@@ -155,6 +164,10 @@ export function useMatchEngine(slug: string): MatchEngineApi {
     socketRef.current?.emit(MATCH_EVENTS.NEXT);
   }, []);
 
+  const sendChatMessage = useCallback((message: string) => {
+    socketRef.current?.emit(MATCH_EVENTS.CHAT_SEND, { message });
+  }, []);
+
   const isHost = lobby?.hostSessionId === sessionId;
 
   return {
@@ -168,11 +181,13 @@ export function useMatchEngine(slug: string): MatchEngineApi {
     ended,
     cancelled,
     error,
+    chatMessages,
     sessionId,
     isHost,
     start,
     submit,
     next,
+    sendChatMessage,
   };
 
 }

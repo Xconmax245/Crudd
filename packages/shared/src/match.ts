@@ -14,6 +14,7 @@ export const MATCH_EVENTS = {
   START: 'host:start',
   SUBMIT: 'answer:submit',
   NEXT: 'host:next',
+  CHAT_SEND: 'chat:send',
   // server -> client
   LOBBY_STATE: 'lobby:state',
   LOBBY_CANCELLED: 'lobby:cancelled',
@@ -23,6 +24,7 @@ export const MATCH_EVENTS = {
   ANSWER_ACK: 'answer:ack',
   QUESTION_END: 'question:end',
   MATCH_END: 'match:end',
+  CHAT_RECEIVE: 'chat:receive',
 } as const;
 
 /**
@@ -53,7 +55,18 @@ export interface SubmitAnswerPayload {
   selectedIndex: number;
 }
 
+export interface ChatSendPayload {
+  message: string;
+}
+
 // --- server -> client -------------------------------------------------------
+
+export interface ChatMessagePayload {
+  sessionId: string;
+  username: string | null;
+  message: string;
+  timestamp: number;
+}
 
 export interface LobbyStatePayload {
   status: ChallengeStatus;

@@ -225,6 +225,34 @@ export function attachMatchGateway(httpServer: HttpServer, corsOrigins: string[]
       }
     });
 
+    socket.on(MATCH_EVENTS.CHAT_SEND, async (payload: { message?: string }) => {
+      try {
+        if (!withinRateLimit(socket)) {
+          throw new MatchEngineError('Slow down', 'RATE_LIMITED');
+        }
+        if (!data.challengeId || !data.sessionId) {
+          throw new MatchEngineError('Join a lobby first', 'BAD_REQUEST');
+        }
+        if (typeof payload?.message !== 'string' || payload.message.trim().length === 0) {
+          throw new MatchEngineError('Invalid message', 'BAD_REQUEST');
+        }
+        const messageText = payload.message.trim();
+        if (messageText.length > 200) {
+          throw new MatchEngineError('Message too long', 'BAD_REQUEST');
+        }
+        
+        const msg = {
+          sessionId: data.sessionId,
+          username: data.username || 'Guest',
+          message: messageText,
+          timestamp: Date.now(),
+        };
+        io.to(room(data.challengeId)).emit(MATCH_EVENTS.CHAT_RECEIVE, msg);
+      } catch (err) {
+        emitError(socket, err);
+      }
+    });
+
     socket.on('disconnect', async () => {
       try {
         if (data.challengeId && data.sessionId) {
