@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Publishing lifecycle shared by banks and questions.
+// Only PUBLISHED content is exposed to the public player experience.
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// Admin authorization roles. Only ADMIN / SUPER_ADMIN are functional for now,
+// but the enum is designed to be extensible.
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  MODERATOR
+}
+
+model QuestionBank {
+  id            String        @id @default(uuid())
+  title         String
+  subject       String
+  questionCount Int
+  createdBy     String?       // null if seeded by admin
+  createdAt     DateTime      @default(now())
+
+  // Admin content-management metadata
+  description   String?
+  category      String?
+  tags          String[]
+  status        ContentStatus @default(DRAFT)
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at")
+  publishedAt   DateTime?     @map("published_at")
+  archivedAt    DateTime?     @map("archived_at")
+
+  questions     Question[]
+  challenges    Challenge[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("question_banks")
+}
+
+model Question {
+  id            String        @id @default(uuid())
+  bankId        String        @map("bank_id")
+  questionText  String        @map("question_text")
+  options       Json          // Array of strings
+  correctIndex  Int           @map("correct_index")
+  createdAt     DateTime      @default(now())
+
+  // Optional/schema-only for MVP
+  difficulty    String?
+  tags          String[]
+  explanation   String?
+  source        String?
+
+  // Admin content-management metadata
+  status        ContentStatus @default(DRAFT)
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at")
+  publishedAt   DateTime?     @map("published_at")
+  archivedAt    DateTime?     @map("archived_at")
+
+  bank          QuestionBank  @relation(fields: [bankId], references: [id], onDelete: Cascade)
+  challengeQuestions ChallengeQuestion[]
+
+  @@index([bankId])
+  @@index([status])
+  @@map("questions")
+}
+
+
+enum ChallengeStatus {
+  LOBBY
+  ACTIVE
+  FINISHED
+  CANCELLED
+}
+
+model Challenge {
+  id            String          @id @default(uuid())
+  bankId        String          @map("bank_id")
+  createdBy     String          @map("created_by") // guest session identifier
+  questionCount Int             @map("question_count")
+  timerSeconds  Int             @map("timer_seconds")
+  maxPlayers    Int             @map("max_players")
+  status        ChallengeStatus @default(LOBBY)
+  shareSlug     String          @unique @map("share_slug")
+  createdAt     DateTime        @default(now())
+
+  bank          QuestionBank    @relation(fields: [bankId], references: [id], onDelete: Restrict)
+  questions     ChallengeQuestion[]
+  participants  MatchParticipant[]
+  answers       MatchAnswer[]
+
+  @@map("challenges")
+}
+
+model ChallengeQuestion {
+  id                   String    @id @default(uuid())
+  challengeId          String    @map("challenge_id")
+  questionId           String    @map("question_id")
+  position             Int
+  shuffledOptions      Json      @map("shuffled_options")
+  shuffledCorrectIndex Int       @map("shuffled_correct_index")
+
+  challenge            Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  question             Question  @relation(fields: [questionId], references: [id], onDelete: Restrict)
+
+  @@unique([challengeId, position])
+  @@unique([challengeId, questionId])
+  @@map("challenge_questions")
+}
+
+enum ParticipantRole {
+  HOST
+  PLAYER
+}
+
+model MatchParticipant {
+  id          String          @id @default(uuid())
+  challengeId String          @map("challenge_id")
+  sessionId   String          @map("session_id")
+  username    String?
+  role        ParticipantRole @default(PLAYER)
+  score       Int             @default(0)
+  joinedAt    DateTime        @default(now()) @map("joined_at")
+  leftAt      DateTime?       @map("left_at")
+
+  challenge   Challenge       @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  answers     MatchAnswer[]
+
+  @@map("match_participants")
+}
+
+model MatchAnswer {
+  id             String           @id @default(uuid())
+  challengeId    String           @map("challenge_id")
+  questionId     String           @map("question_id")
+  participantId  String           @map("participant_id")
+  selectedIndex  Int              @map("selected_index")
+  isCorrect      Boolean          @map("is_correct")
+  responseMs     Int              @map("response_ms")
+  pointsAwarded  Int              @map("points_awarded")
+  answeredAt     DateTime         @default(now()) @map("answered_at")
+
+  challenge      Challenge        @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  participant    MatchParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@map("match_answers")
+}
+
+// ---------------------------------------------------------------------------
+// Admin / operations control plane
+// ---------------------------------------------------------------------------
+
+// Database-backed admin identity. `authUserId` links to the Supabase Auth user
+// (auth.users.id). Authorization is enforced server-side: authenticated Supabase
+// user -> AdminUser lookup -> isActive check -> role check.
+model AdminUser {
+  id          String     @id @default(uuid())
+  authUserId  String     @unique @map("auth_user_id") // Supabase auth.users.id
+  email       String     @unique
+  displayName String?    @map("display_name")
+  role        AdminRole  @default(ADMIN)
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @default(now()) @updatedAt @map("updated_at")
+  lastLoginAt DateTime?  @map("last_login_at")
+
+  auditLogs   AuditLog[]
+
+  @@index([authUserId])
+  @@map("admin_users")
+}
+
+// Append-only record of privileged administrative actions.
+// Never store secrets or access tokens in `metadata`.
+model AuditLog {
+  id          String     @id @default(uuid())
+  adminUserId String?    @map("admin_user_id")
+  action      String
+  entityType  String?    @map("entity_type")
+  entityId    String?    @map("entity_id")
+  metadata    Json?
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  adminUser   AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@index([adminUserId])
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+// Key/value platform configuration with a defined, validated shape at the API layer.
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
+}
+
