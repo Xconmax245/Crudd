@@ -112,7 +112,7 @@ export default function MatchRoom() {
       </AnimatePresence>
 
       {/* Conditionally render ChatPanel only in Lobby or Ended phases */}
-      {(!countdown && !question && !reveal) && (
+      {(ended || (!countdown && !question && !reveal)) && (
         <ChatPanel engine={engine} />
       )}
     </div>
