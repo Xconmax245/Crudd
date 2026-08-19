@@ -1,0 +1,115 @@
+/* CRUDD design system — fonts loaded via @fontsource packages */
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/space-grotesk';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Marquee scroll keyframes — defined here (not ONLY in tailwind.config.ts)
+ * on purpose. The TrustStrip uses the custom `.marquee-track` class rather than
+ * the `animate-marquee` utility, and Tailwind only emits keyframes from its
+ * config when the matching `animate-*` utility appears in the markup. Without
+ * this block the animation references keyframes that got tree-shaken away, so
+ * the strip renders but never moves. Keeping it top-level guarantees it ships.
+ */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* Offset anchor targets so section headings clear the fixed nav */
+    scroll-padding-top: 5.5rem;
+    /* Kill the blue tap flash on mobile — we provide our own press feedback */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-cream text-ink font-body antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+    /* Balanced multi-line headings avoid lonely orphan words */
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Focus visible — visible ring on keyboard nav, invisible on mouse */
+  :focus-visible {
+    @apply outline-none ring-3 ring-purple ring-offset-2 ring-offset-cream;
+  }
+
+  /* Reduce all motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /*
+   * Tactile press for neo-brutalist buttons & links.
+   * Works alongside existing hover translate/shadow utilities:
+   * hover nudges the element toward its shadow, active pushes it
+   * fully down (shadow collapsed) for a satisfying "click".
+   */
+  .press {
+    transition: transform 0.13s cubic-bezier(0.3, 0.7, 0.4, 1),
+                box-shadow 0.13s cubic-bezier(0.3, 0.7, 0.4, 1);
+    will-change: transform;
+  }
+  .press:active {
+    transform: translate(5px, 5px) !important;
+    box-shadow: none !important;
+  }
+}
+
+@layer utilities {
+  /* Hard-offset shadow helpers (already in Tailwind config, this adds the hover shift) */
+  .shadow-hard-hover {
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+  }
+  .shadow-hard-hover:hover {
+    box-shadow: 2px 2px 0px #16161D;
+    transform: translate(4px, 4px);
+  }
+
+  /* Marquee track — doubled content for seamless loop */
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    animation: marquee 28s linear infinite;
+  }
+  /* Pause the scroll on hover so people can actually read a line */
+  .marquee-track:hover {
+    animation-play-state: paused;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track {
+      animation: none;
+    }
+  }
+}
