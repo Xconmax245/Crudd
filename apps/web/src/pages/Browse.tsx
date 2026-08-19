@@ -64,7 +64,13 @@ export default function Browse() {
       <header className="border-b-3 border-ink bg-cream sticky top-0 z-10">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center max-w-6xl">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate(-1)} className="p-2 hover:bg-ink/5 rounded-full transition-colors">
+            <button 
+              onClick={() => {
+                const landingUrl = import.meta.env.VITE_LANDING_URL || 'https://crudd-landing.vercel.app/';
+                window.location.href = landingUrl;
+              }} 
+              className="p-2 hover:bg-ink/5 rounded-full transition-colors"
+            >
               <ArrowLeft size={24} />
             </button>
             <div className="font-display font-black text-2xl tracking-tight">CRUDD</div>
