@@ -1,0 +1,49 @@
+services:
+  # The CRUDD API (Fastify + Socket.IO)
+  - type: web
+    name: crudd-api
+    env: docker
+    dockerfilePath: apps/api/Dockerfile
+    # The build context MUST be the monorepo root
+    dockerContext: .
+    region: oregon
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      # Point to your Supabase Postgres Database URL
+      - key: DATABASE_URL
+        sync: false
+      # Point to your Supabase Postgres Direct URL (for migrations)
+      - key: DIRECT_URL
+        sync: false
+      # Automatically connect to the Render Redis instance created below
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: crudd-redis
+          property: connectionString
+      # Add your Vercel domains here once deployed
+      - key: FRONTEND_URL
+        sync: false
+      - key: ADMIN_URL
+        sync: false
+      - key: LANDING_URL
+        sync: false
+      # Supabase Auth configuration
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: ADMIN_BOOTSTRAP_EMAILS
+        sync: false
+
+  # Managed Redis for the Match Engine and WebSocket Pub/Sub
+  - type: redis
+    name: crudd-redis
+    region: oregon
+    plan: free # or starter
+    maxmemoryPolicy: noeviction
