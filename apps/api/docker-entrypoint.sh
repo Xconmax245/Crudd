@@ -14,13 +14,7 @@ set -e
 
 cd /app
 
-if [ -d "packages/database/prisma/migrations" ]; then
-  echo "[entrypoint] Running prisma migrate deploy..."
-  pnpm --filter @crudd/database exec prisma migrate deploy
-else
-  echo "[entrypoint] No migrations dir found; running prisma db push..."
-  pnpm --filter @crudd/database exec prisma db push --skip-generate
-fi
+echo "[entrypoint] Skipping migrations on boot (assumes schema is pushed)..."
 
 echo "[entrypoint] Starting API..."
 exec pnpm --filter @crudd/api exec tsx src/index.ts
