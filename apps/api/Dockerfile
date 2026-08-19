@@ -25,9 +25,7 @@ COPY packages/shared/package.json ./packages/shared/
 COPY packages/validation/package.json ./packages/validation/
 
 # Install the full workspace (dev deps included: we need tsx + prisma CLI).
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm config set store-dir /pnpm/store && \
-    pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # Copy the source needed by the API and its workspace deps.
 COPY apps/api ./apps/api
