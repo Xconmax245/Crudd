@@ -15,6 +15,7 @@ import { captureException } from '../observability';
 interface SocketData {
   challengeId?: string;
   sessionId?: string;
+  username?: string;
   /** Sliding-window timestamps (ms) of recent inbound events for rate limiting. */
   events?: number[];
 }
@@ -118,6 +119,9 @@ export function attachMatchGateway(httpServer: HttpServer, corsOrigins: string[]
 
         data.challengeId = meta.challengeId;
         data.sessionId = payload.sessionId;
+        if (payload.username) {
+          data.username = payload.username;
+        }
         await socket.join(room(meta.challengeId));
 
         logger.info(
