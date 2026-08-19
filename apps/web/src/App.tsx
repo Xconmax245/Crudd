@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { lazy, Suspense } from 'react';
 import { Toaster } from 'sonner';
 
@@ -30,6 +30,7 @@ function App() {
             <Route path="/banks/:id/configure" element={<Configure />} />
             <Route path="/challenge/:slug" element={<Challenge />} />
             <Route path="/challenge/:slug/play" element={<MatchRoom />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </div>

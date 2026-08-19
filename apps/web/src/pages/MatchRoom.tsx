@@ -66,7 +66,7 @@ export default function MatchRoom() {
         title="Match cancelled"
         message={cancelled}
         actionLabel="Browse Challenges"
-        onAction={() => navigate('/browse')}
+        onAction={() => navigate('/')}
       />
     );
   }
@@ -97,7 +97,7 @@ export default function MatchRoom() {
             sessionId={engine.sessionId}
             isHost={engine.isHost}
             onRematch={() => navigate(`/challenge/${slug}`)}
-            onExit={() => navigate('/browse')}
+            onExit={() => navigate('/')}
           />
         ) : reveal ? (
           <RevealView key={`reveal-${reveal.position}`} engine={engine} />
