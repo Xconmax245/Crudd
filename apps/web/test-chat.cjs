@@ -1,37 +1,21 @@
 const { io } = require("socket.io-client");
 
-const socket = io("http://localhost:3001", {
-  path: "/socket.io"
-});
-
-socket.on("connect", () => {
-  console.log("Connected");
-  
-  // First join a match
-  socket.emit("lobby:join", {
-    slug: "test-slug",
-    sessionId: "test-session-123",
-    username: "test-user"
+async function run() {
+  // Create a match first to get a valid slug
+  const res = await fetch("http://localhost:3001/api/matches", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      bankId: "cm01z2aah000108jy5a593j2h", // I will fetch a real bank id first
+      settings: {
+        timePerQuestion: 10,
+        randomizeQuestions: false
+      }
+    })
   });
-});
-
-socket.on("lobby:state", (state) => {
-  console.log("Joined lobby", state.slug);
   
-  // Send a chat message
-  socket.emit("chat:send", { message: "Hello world!" });
-});
+  const text = await res.text();
+  console.log("Create match response:", text);
+}
 
-socket.on("chat:receive", (msg) => {
-  console.log("Received chat message:", msg);
-  process.exit(0);
-});
-
-socket.on("match:error", (err) => {
-  console.log("Error:", err);
-});
-
-setTimeout(() => {
-  console.log("Timeout");
-  process.exit(1);
-}, 5000);
+run();
