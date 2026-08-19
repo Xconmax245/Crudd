@@ -47,3 +47,4 @@ services:
     region: oregon
     plan: free # or starter
     maxmemoryPolicy: noeviction
+    ipAllowList: [] # Required by Render; empty array means only internal Render services can connect
