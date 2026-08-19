@@ -64,7 +64,7 @@ export default function FinalCTA() {
 
         <div ref={ctaRef} className="flex flex-wrap items-center justify-center gap-4">
           <a
-            href={import.meta.env.VITE_APP_URL || "http://localhost:3000"}
+            href={import.meta.env.VITE_APP_URL || "https://crudd-web.vercel.app"}
             data-destination="browse"
             className="press group flex items-center gap-2 bg-cream text-ink border-3 border-ink shadow-hard px-7 py-4 rounded-crudd font-display font-bold text-lg hover:shadow-hard-sm hover:translate-x-[3px] hover:translate-y-[3px]"
           >
@@ -72,7 +72,7 @@ export default function FinalCTA() {
             <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform duration-150" />
           </a>
           <a
-            href={import.meta.env.VITE_APP_URL || "http://localhost:3000"}
+            href={import.meta.env.VITE_APP_URL || "https://crudd-web.vercel.app"}
             data-destination="join"
             className="flex items-center gap-2 bg-purple text-cream border-3 border-cream/30 px-7 py-4 rounded-crudd font-display font-bold text-lg hover:bg-white/10 active:bg-white/20 transition-colors duration-150"
           >

@@ -113,7 +113,7 @@ export default function FAQ() {
         <div className="faq_footer text-center mt-10">
           <p className="font-body text-sm text-cream/40">
             Still confused?{' '}
-            <a href={import.meta.env.VITE_APP_URL || "http://localhost:3000"} className="faq_link text-purple font-semibold hover:underline">
+            <a href={import.meta.env.VITE_APP_URL || "https://crudd-web.vercel.app"} className="faq_link text-purple font-semibold hover:underline">
               Contact us
             </a>
           </p>

@@ -132,7 +132,7 @@ export default function Hero() {
             {/* CTA group */}
             <div ref={ctaRef} className="hero_cta-group flex flex-wrap gap-3 mb-10">
               <a
-                href={import.meta.env.VITE_APP_URL || "http://localhost:3000"}
+                href={import.meta.env.VITE_APP_URL || "https://crudd-web.vercel.app"}
                 data-destination="browse"
                 className="btn-primary press group flex items-center gap-2 bg-purple text-cream border-3 border-ink shadow-hard px-6 py-3.5 rounded-crudd font-display font-bold text-base hover:shadow-hard-sm hover:translate-x-[3px] hover:translate-y-[3px]"
               >
@@ -140,7 +140,7 @@ export default function Hero() {
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform duration-150" />
               </a>
               <a
-                href={import.meta.env.VITE_APP_URL || "http://localhost:3000"}
+                href={import.meta.env.VITE_APP_URL || "https://crudd-web.vercel.app"}
                 data-destination="join"
                 className="btn-secondary press flex items-center gap-2 bg-cream text-ink border-3 border-ink shadow-hard px-6 py-3.5 rounded-crudd font-display font-bold text-base hover:shadow-hard-sm hover:translate-x-[3px] hover:translate-y-[3px]"
               >

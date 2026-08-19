@@ -53,7 +53,7 @@ export default function Nav() {
         <nav className="nav_menu flex items-center justify-between h-16 md:h-18">
           {/* Logo */}
           <a
-            href={import.meta.env.VITE_APP_URL || "http://localhost:3000"}
+            href={import.meta.env.VITE_APP_URL || "https://crudd-web.vercel.app"}
             className="nav_logo flex items-center gap-2 group"
             aria-label="CRUDD home"
           >
@@ -81,7 +81,7 @@ export default function Nav() {
 
           {/* Desktop CTA */}
           <a
-            href={import.meta.env.VITE_APP_URL || "http://localhost:3000"}
+            href={import.meta.env.VITE_APP_URL || "https://crudd-web.vercel.app"}
             data-destination="browse"
             className="btn-primary press hidden md:flex items-center gap-2 bg-purple text-cream border-3 border-ink shadow-hard px-5 py-2.5 rounded-crudd font-display font-bold text-sm hover:shadow-hard-sm hover:translate-x-[3px] hover:translate-y-[3px]"
           >
@@ -124,7 +124,7 @@ export default function Nav() {
                 </button>
               ))}
               <a
-                href={import.meta.env.VITE_APP_URL || "http://localhost:3000"}
+                href={import.meta.env.VITE_APP_URL || "https://crudd-web.vercel.app"}
                 data-destination="browse"
                 className="press mt-2 flex items-center justify-center gap-2 bg-purple text-cream border-3 border-ink shadow-hard px-5 py-3 rounded-crudd font-display font-bold"
               >

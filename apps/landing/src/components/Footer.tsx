@@ -42,7 +42,7 @@ export default function Footer() {
         <div className="footer_top grid md:grid-cols-4 gap-12 py-16">
           {/* Brand */}
           <div className="footer_brand md:col-span-1">
-            <a href={import.meta.env.VITE_APP_URL || "http://localhost:3000"} className="footer_logo-link flex items-center gap-2 mb-4 w-fit">
+            <a href={import.meta.env.VITE_APP_URL || "https://crudd-web.vercel.app"} className="footer_logo-link flex items-center gap-2 mb-4 w-fit">
               <div className="w-9 h-9 bg-purple border-3 border-white/20 rounded-crudd flex items-center justify-center">
                 <Zap size={18} className="text-cream fill-cream" />
               </div>
@@ -90,11 +90,11 @@ export default function Footer() {
 
           {/* Legal links */}
           <div className="footer_legal-links flex items-center gap-4">
-            <a href={import.meta.env.VITE_APP_URL || "http://localhost:3000"} className="footer_legal-link font-body text-xs text-cream/30 hover:text-cream/60 transition-colors duration-150">
+            <a href={import.meta.env.VITE_APP_URL || "https://crudd-web.vercel.app"} className="footer_legal-link font-body text-xs text-cream/30 hover:text-cream/60 transition-colors duration-150">
               Privacy
             </a>
             <span className="footer_legal-divider text-cream/20">·</span>
-            <a href={import.meta.env.VITE_APP_URL || "http://localhost:3000"} className="footer_legal-link font-body text-xs text-cream/30 hover:text-cream/60 transition-colors duration-150">
+            <a href={import.meta.env.VITE_APP_URL || "https://crudd-web.vercel.app"} className="footer_legal-link font-body text-xs text-cream/30 hover:text-cream/60 transition-colors duration-150">
               Terms
             </a>
           </div>

@@ -52,7 +52,7 @@ export default function QuestionBanks() {
     fetchBanks()
   }, [])
 
-  const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:3000'
+  const appUrl = import.meta.env.VITE_APP_URL || 'https://crudd-web.vercel.app'
 
   return (
     <section id="question-banks" className="py-24 px-6 bg-ink">
@@ -120,7 +120,7 @@ export default function QuestionBanks() {
         {/* CTA */}
         <div className="text-center mt-12">
           <a
-            href={import.meta.env.VITE_APP_URL || "http://localhost:3000"}
+            href={import.meta.env.VITE_APP_URL || "https://crudd-web.vercel.app"}
             data-destination="browse"
             className="press group inline-flex items-center gap-2 bg-purple text-cream border-3 border-cream/20 shadow-hard-purple px-6 py-3.5 rounded-crudd font-display font-bold text-base hover:shadow-hard-sm-purple hover:translate-x-[3px] hover:translate-y-[3px]"
           >
