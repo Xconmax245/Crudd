@@ -1,0 +1,171 @@
+
+# ===========================================================================
+# CRUDD — production compose (readiness P0.2).
+#
+# Brings up the full stack: Postgres + Redis + API + web + landing + admin.
+# All secrets and public build args come from `.env.prod` (see docs/env.md and
+# .env.prod.example) — nothing is hardcoded here.
+#
+# Build + run:
+#   cp .env.prod.example .env.prod   # then fill in real values
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# NOTE on scaling (readiness P0.4): the API's Socket.IO layer uses the Redis
+# adapter so broadcasts fan out across replicas, but a match's authoritative
+# timing sweeper assumes each match's sockets land on one process. If you scale
+# `api` beyond one replica, put a load balancer with STICKY SESSIONS
+# (ip_hash / cookie affinity) in front of it. Single replica needs nothing.
+# ===========================================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-crudd}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:-crudd}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crudd} -d ${POSTGRES_DB:-crudd}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      # Migrations use DIRECT_URL; the app uses the (optionally pooled) DATABASE_URL.
+      DATABASE_URL: ${DATABASE_URL}
+      DIRECT_URL: ${DIRECT_URL:-${DATABASE_URL}}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      FRONTEND_URL: ${FRONTEND_URL}
+      ADMIN_URL: ${ADMIN_URL}
+      LANDING_URL: ${LANDING_URL}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      ADMIN_BOOTSTRAP_EMAILS: ${ADMIN_BOOTSTRAP_EMAILS}
+      # Observability — optional; leave blank to run without Sentry
+
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    # Port not exposed directly — nginx handles TLS termination and proxying.
+    # Uncomment the line below for direct API access during debugging only.
+    # ports:
+    #   - "${API_PORT:-3001}:3001"
+    healthcheck:
+      # busybox wget ships in node:alpine.
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_SOCKET_URL: ${VITE_SOCKET_URL:-${VITE_API_URL}}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-3000}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Phase 0 marketing site. Purely static — no API/DB dependency, so it has no
+  # `depends_on`; its CTAs just link out to the player app at VITE_APP_URL.
+  landing:
+    build:
+      context: .
+      dockerfile: apps/landing/Dockerfile
+      args:
+        VITE_APP_URL: ${VITE_APP_URL:-${FRONTEND_URL}}
+    restart: unless-stopped
+    ports:
+      - "${LANDING_PORT:-3003}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${ADMIN_PORT:-3002}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # nginx — TLS termination, HTTP→HTTPS redirect, WebSocket proxy
+  # ---------------------------------------------------------------------------
+  # Mount your TLS certificates as:
+  #   ./certs/fullchain.pem   (full certificate chain)
+  #   ./certs/privkey.pem     (private key — NEVER commit this file)
+  #
+  # For Let's Encrypt / certbot, bind-mount the live directory:
+  #   - /etc/letsencrypt/live/play.example.com/fullchain.pem:/etc/nginx/certs/fullchain.pem:ro
+  #   - /etc/letsencrypt/live/play.example.com/privkey.pem:/etc/nginx/certs/privkey.pem:ro
+  #
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/crudd.conf:ro
+      # Mount TLS certs from host — replace with your actual cert paths:
+      - ./certs/fullchain.pem:/etc/nginx/certs/fullchain.pem:ro
+      - ./certs/privkey.pem:/etc/nginx/certs/privkey.pem:ro
+
+volumes:
+  postgres_data:
+  redis_data:

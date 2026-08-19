@@ -1,0 +1,18 @@
+{
+  "name": "crudd",
+  "private": true,
+  "scripts": {
+    "predev": "node scripts/free-ports.mjs",
+    "dev": "turbo run dev",
+    "free-ports": "node scripts/free-ports.mjs",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\""
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "pnpm@9.15.4"
+}

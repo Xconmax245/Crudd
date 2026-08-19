@@ -1,0 +1,27 @@
+
+# Keep build contexts lean and prevent host artifacts (and pnpm's symlinked
+# node_modules) from leaking into images. Everything is reinstalled in-image.
+**/node_modules
+**/dist
+**/.turbo
+**/.vite
+**/coverage
+
+# Local env / secrets — never bake these into an image layer.
+**/.env
+**/.env.*
+!**/.env.example
+
+# VCS / editor / OS noise
+.git
+.gitignore
+**/*.log
+**/.DS_Store
+
+# Docs & assets not needed at build time
+*.md
+!apps/*/README.md
+*.jpg
+*.jpeg
+*.png
+*.avif
