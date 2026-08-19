@@ -53,19 +53,21 @@ Addendum-scoped items — done:
 
 Remaining (broader hardening, not blocking MVP launch):
 
-- [x] **Automated tests.** Validated core authoritative engine, host guards, state transitions, and socket flow. `engine.test.ts` and `gateway.test.ts` fully pass.
-- [x] **CI pipeline.** `ci.yml` added for lint, typecheck, and test gates on main/PRs.
-- [x] **Observability.** Match layer logs to `logger` (Pino) and Sentry tracks 5xx API errors. Node process exceptions and unhandled rejections are gracefully handled and sent to Sentry.
+- [x] **Automated tests.** Validated core authoritative engine, host guards, state transitions, and socket flow. `engine.test.ts` and `gateway.test.ts` fully pass (76 tests).
+- [x] **CI pipeline.** `ci.yml` gates `lint` → `typecheck` → `test` → `build` on main/PRs. `test` runs every workspace's suite (api + validation), and the `build` step catches build-only breakage (Vite/tsc project refs, Prisma client generation) that lint/typecheck miss.
+- [x] **Observability.** Match layer logs to `logger` (Pino, with secret redaction) and Sentry tracks 5xx API errors. Node process exceptions and unhandled rejections are gracefully handled and sent to Sentry. Sentry is fully optional — a blank `SENTRY_DSN` makes the SDK a no-op.
+
 
 
 ---
 
 ## Deployment infra checklist
 
-- [x] Dockerfiles for `api`, `web`, `admin` (+ prod `docker-compose.prod.yml`).
+- [x] Dockerfiles for `api`, `web`, `admin`, **and `landing`** (+ prod `docker-compose.prod.yml`). All four services build from the repo root with SPA-aware nginx configs and a `/healthz` endpoint.
 - [x] Bundled **Postgres** + **Redis** in prod compose; `prisma migrate deploy` runs from the api entrypoint on release.
 - [x] DB story confirmed: pooled `DATABASE_URL` + unpooled `DIRECT_URL` for migrations; Supabase powers admin auth (documented in `docs/env.md`).
-- [x] Prod CORS/socket origins (`FRONTEND_URL`, `ADMIN_URL`) and web/admin `VITE_*` build vars documented + passed as compose build args.
+- [x] Prod CORS/socket origins (`FRONTEND_URL`, `ADMIN_URL`, `LANDING_URL`) and web/admin/landing `VITE_*` build vars documented + passed as compose build args.
+
 - [x] Redis adapter added for multi-replica broadcast; sticky-session requirement documented as the MVP scaling path.
 - [x] Health check wired to `/api/health` (compose healthcheck on the `api` service).
 - [x] Provision managed Postgres/Redis in the target environment (or use the bundled services) and set real secrets in `.env.prod`.
