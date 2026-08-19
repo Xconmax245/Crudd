@@ -1,0 +1,51 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/space-grotesk';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: theme('colors.cream');
+  color: theme('colors.ink');
+  font-family: theme('fontFamily.body');
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand text-brand-fg hover:bg-indigo-600;
+  }
+  .btn-secondary {
+    @apply btn border border-line bg-paper text-ink hover:bg-gray-50;
+  }
+  .btn-danger {
+    @apply btn bg-danger text-white hover:bg-red-700;
+  }
+  .card {
+    @apply rounded-xl border border-line bg-paper shadow-sm;
+  }
+  .input {
+    @apply w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-ink;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+}
