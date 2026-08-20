@@ -70,15 +70,19 @@ export function useMatchEngine(slug: string): MatchEngineApi {
     const socket = createMatchSocket();
     socketRef.current = socket;
 
+    // NOTE: chat history is intentionally NOT reset here. `join` fires on both
+    // the initial connect and every reconnect, so clearing here would wipe the
+    // visible chat log on any transient network blip. The useState initializer
+    // already starts the log empty for a fresh match.
     const join = () => {
       setConnection('connected');
-      setChatMessages([]);
       socket.emit(MATCH_EVENTS.JOIN, {
         slug,
         sessionId,
         username: getUsername(),
       });
     };
+
 
     socket.on('connect', join);
     socket.on('disconnect', () => setConnection('disconnected'));

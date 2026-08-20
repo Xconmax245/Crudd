@@ -18,11 +18,23 @@ interface SocketData {
   username?: string;
   /** Sliding-window timestamps (ms) of recent inbound events for rate limiting. */
   events?: number[];
+  /** Separate sliding-window timestamps (ms) for chat messages. */
+  chatEvents?: number[];
 }
 
 /** Simple per-socket sliding-window rate limit (readiness P2). */
 const RATE_LIMIT_WINDOW_MS = 1000;
 const RATE_LIMIT_MAX = 5;
+
+/**
+ * Chat has its own, more forgiving rate budget so that sending messages never
+ * consumes (or is starved by) the gameplay event budget above. Without this,
+ * answering a question and chatting share one 5-per-second window and messages
+ * get silently dropped with a "Slow down" error.
+ */
+const CHAT_RATE_WINDOW_MS = 10_000;
+const CHAT_RATE_MAX = 10;
+
 
 function room(challengeId: string) {
   return `match:${challengeId}`;
@@ -63,6 +75,17 @@ function withinRateLimit(socket: Socket): boolean {
   data.events = events;
   return events.length <= RATE_LIMIT_MAX;
 }
+
+/** Returns true if the socket is within its *chat* budget; false if it should be dropped. */
+function withinChatRateLimit(socket: Socket): boolean {
+  const data = socket.data as SocketData;
+  const now = Date.now();
+  const events = (data.chatEvents ?? []).filter((t) => now - t < CHAT_RATE_WINDOW_MS);
+  events.push(now);
+  data.chatEvents = events;
+  return events.length <= CHAT_RATE_MAX;
+}
+
 
 export interface MatchGateway {
   io: Server;
@@ -231,9 +254,6 @@ export function attachMatchGateway(httpServer: HttpServer, corsOrigins: string[]
 
     socket.on(MATCH_EVENTS.CHAT_SEND, async (payload: { message?: string }) => {
       try {
-        if (!withinRateLimit(socket)) {
-          throw new MatchEngineError('Slow down', 'RATE_LIMITED');
-        }
         if (!data.challengeId || !data.sessionId) {
           throw new MatchEngineError('Join a lobby first', 'BAD_REQUEST');
         }
@@ -244,10 +264,17 @@ export function attachMatchGateway(httpServer: HttpServer, corsOrigins: string[]
         if (messageText.length > 200) {
           throw new MatchEngineError('Message too long', 'BAD_REQUEST');
         }
-        
+        // Chat uses its own budget so it neither starves nor is starved by
+        // gameplay events. Checked only after validation so malformed/empty
+        // payloads don't burn a slot.
+        if (!withinChatRateLimit(socket)) {
+          throw new MatchEngineError('You are sending messages too fast', 'RATE_LIMITED');
+        }
+
         const msg = {
           sessionId: data.sessionId,
           username: data.username || 'Guest',
+
           message: messageText,
           timestamp: Date.now(),
         };

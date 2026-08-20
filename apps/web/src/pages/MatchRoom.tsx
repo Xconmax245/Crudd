@@ -111,10 +111,11 @@ export default function MatchRoom() {
         )}
       </AnimatePresence>
 
-      {/* Conditionally render ChatPanel only in Lobby or Ended phases */}
-      {(ended || (!countdown && !question && !reveal)) && (
-        <ChatPanel engine={engine} />
-      )}
+      {/* Chat floats above the match UI and stays mounted through every phase.
+          Keeping it mounted (rather than gating by phase) is what lets the
+          unread badge accrue while a player is heads-down on a question. */}
+      <ChatPanel engine={engine} />
+
     </div>
   );
 }

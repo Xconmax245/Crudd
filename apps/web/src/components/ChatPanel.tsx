@@ -7,6 +7,9 @@ export function ChatPanel({ engine }: { engine: MatchEngineApi }) {
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Number of messages already seen (read). Everything beyond this that isn't
+  // ours counts as unread on the badge.
+  const [seenCount, setSeenCount] = useState(0);
 
   const { chatMessages, sendChatMessage, sessionId } = engine;
 
@@ -16,6 +19,25 @@ export function ChatPanel({ engine }: { engine: MatchEngineApi }) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [chatMessages, isOpen]);
+
+  // While the panel is open, everything is considered read. Keeping this in an
+  // effect means messages that stream in while open never inflate the badge.
+  useEffect(() => {
+    if (isOpen) {
+      setSeenCount(chatMessages.length);
+    }
+  }, [isOpen, chatMessages.length]);
+
+  // Unread = messages after the last-seen point that were sent by someone else.
+  const unreadCount = isOpen
+    ? 0
+    : chatMessages.slice(seenCount).filter((m) => m.sessionId !== sessionId).length;
+
+  const openChat = () => {
+    setSeenCount(chatMessages.length);
+    setIsOpen(true);
+  };
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,17 +54,18 @@ export function ChatPanel({ engine }: { engine: MatchEngineApi }) {
     <>
       {/* Floating Toggle Button */}
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={openChat}
         className="fixed bottom-6 right-6 z-40 bg-pink text-ink p-4 rounded-full border-3 border-ink shadow-[4px_4px_0px_#0A0A0A] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#0A0A0A] transition-all"
-        aria-label="Open chat"
+        aria-label={unreadCount > 0 ? `Open chat, ${unreadCount} unread` : 'Open chat'}
       >
         <MessageCircle size={28} />
-        {chatMessages.length > 0 && (
-          <span className="absolute -top-2 -right-2 bg-yellow text-ink text-xs font-black w-6 h-6 rounded-full border-2 border-ink flex items-center justify-center">
-            {chatMessages.length}
+        {unreadCount > 0 && (
+          <span className="absolute -top-2 -right-2 bg-yellow text-ink text-xs font-black min-w-6 h-6 px-1 rounded-full border-2 border-ink flex items-center justify-center">
+            {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
+
 
       {/* Chat Drawer/Panel */}
       <AnimatePresence>
