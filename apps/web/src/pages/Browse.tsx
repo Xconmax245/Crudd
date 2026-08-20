@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import type { QuestionBank } from '@crudd/shared';
 import { ArrowRight, ArrowLeft, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -13,7 +13,6 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export default function Browse() {
   useTitle('Question Banks');
-  const navigate = useNavigate();
   const { data: banks, isLoading, isError } = useQuery<QuestionBank[]>({
     queryKey: ['banks'],
     queryFn: async () => {
