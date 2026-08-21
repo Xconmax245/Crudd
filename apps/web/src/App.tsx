@@ -11,6 +11,8 @@ const Browse = lazy(() => import('./pages/Browse'));
 const Configure = lazy(() => import('./pages/Configure'));
 const Challenge = lazy(() => import('./pages/Challenge'));
 const MatchRoom = lazy(() => import('./pages/MatchRoom'));
+const Leaderboard = lazy(() => import('./pages/Leaderboard'));
+
 
 function RouteFallback() {
   return (
@@ -27,7 +29,9 @@ function App() {
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Browse />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/banks/:id/configure" element={<Configure />} />
+
             <Route path="/challenge/:slug" element={<Challenge />} />
             <Route path="/challenge/:slug/play" element={<MatchRoom />} />
             <Route path="*" element={<Navigate to="/" replace />} />

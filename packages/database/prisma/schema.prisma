@@ -137,11 +137,33 @@ model MatchParticipant {
   joinedAt    DateTime        @default(now()) @map("joined_at")
   leftAt      DateTime?       @map("left_at")
 
+  // Persistent cross-session player identity (soft accounts). Optional so the
+  // existing guest flow keeps working: rows without it simply never surface on
+  // the global leaderboard.
+  playerId    String?         @map("player_id")
+
   challenge   Challenge       @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   answers     MatchAnswer[]
 
+  @@index([playerId])
   @@map("match_participants")
 }
+
+// Lightweight persistent identity keyed by a client-generated UUID stored in the
+// player's browser localStorage (`crudd_player_id`). No auth, no password — this
+// is what powers the global leaderboard. `totalScore` is a denormalized running
+// total maintained after each match for fast all-time queries.
+model PlayerProfile {
+  playerId   String   @id @map("player_id")
+  username   String
+  firstSeen  DateTime @default(now()) @map("first_seen")
+  lastSeen   DateTime @default(now()) @map("last_seen")
+  totalScore BigInt   @default(0) @map("total_score")
+
+  @@index([totalScore])
+  @@map("player_profiles")
+}
+
 
 model MatchAnswer {
   id             String           @id @default(uuid())

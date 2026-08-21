@@ -5,7 +5,9 @@ import rateLimit from '@fastify/rate-limit';
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from 'fastify-type-provider-zod';
 import { db } from '@crudd/database';
 import { routes } from './routes';
+import { leaderboardRoutes } from './leaderboard';
 import { adminRoutes } from './admin/routes';
+
 import { attachMatchGateway, type MatchGateway } from './match/gateway';
 import { redis } from './match/redis';
 import { captureException } from './observability';
@@ -89,7 +91,9 @@ async function start() {
   });
 
   await fastify.register(routes);
+  await fastify.register(leaderboardRoutes);
   await fastify.register(adminRoutes);
+
 
   // Capture unexpected server errors in Sentry.
   // Client errors (4xx) are normal application flow — do not report them.

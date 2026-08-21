@@ -13,7 +13,8 @@ import {
   type ChatMessagePayload,
 } from '@crudd/shared';
 import { createMatchSocket } from '../lib/socket';
-import { getSessionId, getUsername } from '../lib/session';
+import { getSessionId, getUsername, getPlayerId } from '../lib/session';
+
 
 export type ConnectionState = 'connecting' | 'connected' | 'disconnected';
 
@@ -80,7 +81,11 @@ export function useMatchEngine(slug: string): MatchEngineApi {
         slug,
         sessionId,
         username: getUsername(),
+        // Persistent soft-account id so this match's points accrue to the
+        // player's global leaderboard total. Safe on every (re)join.
+        playerId: getPlayerId(),
       });
+
     };
 
 

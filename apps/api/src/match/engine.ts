@@ -81,6 +81,8 @@ export class MatchEngine {
   private questionCache = new Map<string, LoadedQuestion[]>();
   private sweeper: ReturnType<typeof setInterval> | null = null;
   private sweeping = false;
+  private activeMatches = new Set<string>();
+  private lastFullSync = 0;
 
   constructor(io: Server) {
     this.io = io;
@@ -119,20 +121,29 @@ export class MatchEngine {
     if (this.sweeping) return;
     this.sweeping = true;
     try {
-      const ids = await getActiveMatchIds();
       const now = Date.now();
-      for (const id of ids) {
+      // Sync from Redis every 15 seconds to catch crash-recovery matches,
+      // without blowing the 10k/day Upstash quota.
+      if (now - this.lastFullSync > 15000) {
+        const ids = await getActiveMatchIds();
+        for (const id of ids) this.activeMatches.add(id);
+        this.lastFullSync = now;
+      }
+
+      for (const id of this.activeMatches) {
         const meta = await getMeta(id);
         if (!meta) {
           await removeActive(id);
+          this.activeMatches.delete(id);
           continue;
         }
         if (meta.phase === 'STARTING' && meta.countdownEndsAt && now >= meta.countdownEndsAt) {
           await this.openQuestion(id, 0);
         } else if (meta.phase === 'QUESTION' && meta.endsAt && now >= meta.endsAt) {
           await this.endQuestion(id, meta.currentPosition);
-        } else if (meta.phase === 'ENDED') {
+        } else if (meta.phase === 'REVEAL' || meta.phase === 'ENDED') {
           await removeActive(id);
+          this.activeMatches.delete(id);
         }
       }
     } catch (err) {
@@ -193,7 +204,12 @@ export class MatchEngine {
   }
 
   /** Register/refresh a player in the lobby and mark them connected. */
-  async join(challengeId: string, sessionId: string, username: string | null): Promise<MatchMeta> {
+  async join(
+    challengeId: string,
+    sessionId: string,
+    username: string | null,
+    playerId: string | null = null,
+  ): Promise<MatchMeta> {
     const meta = await getMeta(challengeId);
     if (!meta) throw new MatchEngineError('Match not found', 'NOT_FOUND');
 
@@ -209,10 +225,31 @@ export class MatchEngine {
         throw new MatchEngineError('This match is full', 'FULL');
       }
       await db.matchParticipant.create({
-        data: { challengeId, sessionId, username, role: 'PLAYER', score: 0 },
+        data: { challengeId, sessionId, username, role: 'PLAYER', score: 0, playerId },
       });
-    } else if (username && username !== existing.username) {
-      await db.matchParticipant.update({ where: { id: existing.id }, data: { username } });
+    } else {
+      // Refresh username and/or backfill the persistent playerId on rejoin.
+      const patch: { username?: string; playerId?: string } = {};
+      if (username && username !== existing.username) patch.username = username;
+      if (playerId && playerId !== existing.playerId) patch.playerId = playerId;
+      if (Object.keys(patch).length > 0) {
+        await db.matchParticipant.update({ where: { id: existing.id }, data: patch });
+      }
+    }
+
+    // Maintain the soft-account profile so the global leaderboard can show a
+    // current display name. Best-effort: never block a join on this write.
+    if (playerId) {
+      const name = (username ?? existing?.username ?? 'Guest').slice(0, 40);
+      try {
+        await db.playerProfile.upsert({
+          where: { playerId },
+          create: { playerId, username: name },
+          update: { username: name, lastSeen: new Date() },
+        });
+      } catch (err) {
+        logger.warn({ err, playerId }, 'leaderboard.profile_upsert_failed');
+      }
     }
 
     const player: StoredPlayer = {
@@ -226,6 +263,7 @@ export class MatchEngine {
     logger.info({ matchId: challengeId, sessionId, isHost: isHost || false }, 'match.joined');
     return meta;
   }
+
 
   /**
    * Mark a player disconnected. If the HOST leaves while still in the LOBBY,
@@ -392,6 +430,7 @@ export class MatchEngine {
       countdownEndsAt,
     });
     await markActive(challengeId);
+    this.activeMatches.add(challengeId);
     logger.info({ matchId: challengeId, hostSessionId: sessionId, countdownEndsAt }, 'match.started');
 
     const payload: CountdownPayload = { startsAt: countdownEndsAt };
@@ -419,6 +458,7 @@ export class MatchEngine {
     if (!meta) return;
 
     await markActive(challengeId);
+    this.activeMatches.add(challengeId);
     logger.info({ matchId: challengeId, position }, 'match.question_opened');
     this.io
       .to(this.room(challengeId))
@@ -481,6 +521,8 @@ export class MatchEngine {
     if (!q) return;
 
     await patchMeta(challengeId, { phase: 'REVEAL', endsAt: null });
+    await removeActive(challengeId);
+    this.activeMatches.delete(challengeId);
     logger.info({ matchId: challengeId, position }, 'match.question_closed');
 
     const [answers, players, scores] = await Promise.all([
@@ -636,12 +678,61 @@ export class MatchEngine {
     this.io.to(this.room(challengeId)).emit(MATCH_EVENTS.MATCH_END, payload);
     logger.info({ matchId: challengeId, playerCount: players.length }, 'match.ended');
 
+    // Roll each identified player's final match score into their persistent
+    // global-leaderboard total. endMatch runs exactly once per match (advance()
+    // guards on the REVEAL phase), so this never double-counts.
+    await this.accumulateGlobalScores(challengeId, scores);
+
     // Prune the bulk live state now rather than waiting on the 6h TTL (§P2).
     // The meta (phase ENDED) and end snapshot are retained so reconnecting
     // clients still receive the results screen.
     await removeActive(challengeId);
     this.questionCache.delete(challengeId);
   }
+
+  /**
+   * Add this match's per-player scores to each soft-account's running global
+   * total. Participants without a `playerId` (legacy / API-only joins) are
+   * simply skipped. Best-effort and fully isolated: a leaderboard write failure
+   * must never break match completion for the players.
+   */
+  private async accumulateGlobalScores(
+    challengeId: string,
+    scores: Record<string, number>,
+  ): Promise<void> {
+    try {
+      const participants = await db.matchParticipant.findMany({
+        where: { challengeId, playerId: { not: null } },
+        select: { sessionId: true, playerId: true },
+      });
+      if (participants.length === 0) return;
+
+      // Aggregate by playerId so a player who somehow occupies two seats in one
+      // match (e.g. two tabs sharing localStorage) is counted once.
+      const gained = new Map<string, number>();
+      for (const p of participants) {
+        if (!p.playerId) continue;
+        const delta = scores[p.sessionId] ?? 0;
+        if (delta <= 0) continue;
+        gained.set(p.playerId, (gained.get(p.playerId) ?? 0) + delta);
+      }
+
+      for (const [playerId, delta] of gained) {
+        await db.playerProfile.update({
+          where: { playerId },
+          data: { totalScore: { increment: BigInt(delta) }, lastSeen: new Date() },
+        });
+      }
+      logger.info(
+        { matchId: challengeId, playersScored: gained.size },
+        'leaderboard.scores_accumulated',
+      );
+    } catch (err) {
+      logger.error({ err, matchId: challengeId }, 'leaderboard.accumulate_failed');
+      captureException(err, { matchId: challengeId, event: 'accumulateGlobalScores' });
+    }
+  }
+
 
   // --- rejoin --------------------------------------------------------------
 

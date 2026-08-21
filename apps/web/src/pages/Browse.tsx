@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import type { QuestionBank } from '@crudd/shared';
-import { ArrowRight, ArrowLeft, X } from 'lucide-react';
+import { ArrowRight, ArrowLeft, X, Trophy } from 'lucide-react';
+
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 
@@ -74,9 +75,16 @@ export default function Browse() {
             </button>
             <div className="font-display font-black text-2xl tracking-tight">CRUDD</div>
           </div>
-          <div className="text-sm font-bold opacity-50">Choose a bank to start</div>
+          <Link
+            to="/leaderboard"
+            className="flex items-center gap-2 px-4 py-2 font-bold text-sm rounded-crudd border-3 border-ink bg-yellow shadow-hard hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+          >
+            <Trophy size={18} />
+            <span className="hidden sm:inline">Leaderboard</span>
+          </Link>
         </div>
       </header>
+
 
       <main className="container mx-auto px-6 max-w-6xl mt-12">
         <div className="text-center mb-16 space-y-4">

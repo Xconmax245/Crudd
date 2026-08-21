@@ -92,10 +92,13 @@ describe('MatchGateway', () => {
     engineMock.join.mockResolvedValue();
     engineMock.rejoinSnapshot.mockResolvedValue(null);
 
-    await triggerSocketEvent('lobby:join', { slug: 'slug', sessionId: 's1', username: 'User' });
+    await triggerSocketEvent('lobby:join', { slug: 'slug', sessionId: 's1', username: 'User', playerId: 'p1' });
 
     expect(engineMock.ensureLobby).toHaveBeenCalledWith('slug');
-    expect(engineMock.join).toHaveBeenCalledWith('c1', 's1', 'User');
+    // The persistent soft-account playerId is forwarded to the engine so the
+    // match's points can accrue to the global leaderboard.
+    expect(engineMock.join).toHaveBeenCalledWith('c1', 's1', 'User', 'p1');
+
     expect(mockSocket.join).toHaveBeenCalledWith('match:c1');
     expect(engineMock.broadcastLobby).toHaveBeenCalledWith('c1');
   });

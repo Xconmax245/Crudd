@@ -55,6 +55,39 @@ export interface MatchAnswer {
 }
 
 // ===========================================================================
+// Global leaderboard (Phase 2.5)
+// Public, unauthenticated contract shapes returned by /api/leaderboard*.
+// Players are identified by a persistent, client-generated `playerId` (soft
+// account) — never by username, which is not unique.
+// ===========================================================================
+
+export type LeaderboardPeriod = 'today' | 'week' | 'alltime';
+
+export interface GlobalLeaderboardEntry {
+  rank: number;
+  playerId: string;
+  username: string;
+  score: number;
+  /** Always false from the server; the client sets it by comparing playerId. */
+  isYou: boolean;
+}
+
+export interface GlobalLeaderboardResponse {
+  period: LeaderboardPeriod;
+  generatedAt: string;
+  entries: GlobalLeaderboardEntry[];
+}
+
+/** A single player's own rank/score for a period (null when they have none). */
+export interface LeaderboardMeResponse {
+  rank: number;
+  score: number;
+  period: LeaderboardPeriod;
+  username: string;
+}
+
+
+// ===========================================================================
 // Admin DTOs (Phase 1.5)
 // These are the public API contract shapes returned by /api/admin/*.
 // They are intentionally decoupled from internal Prisma entities.

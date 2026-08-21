@@ -138,7 +138,13 @@ export function attachMatchGateway(httpServer: HttpServer, corsOrigins: string[]
           throw new MatchEngineError('Invalid join payload', 'BAD_REQUEST');
         }
         const meta = await engine.ensureLobby(payload.slug);
-        await engine.join(meta.challengeId, payload.sessionId, payload.username ?? null);
+        await engine.join(
+          meta.challengeId,
+          payload.sessionId,
+          payload.username ?? null,
+          payload.playerId ?? null,
+        );
+
 
         data.challengeId = meta.challengeId;
         data.sessionId = payload.sessionId;

@@ -48,7 +48,14 @@ export interface JoinPayload {
   slug: string;
   sessionId: string;
   username: string | null;
+  /**
+   * Persistent cross-session player identity (soft account) from the client's
+   * localStorage. Optional: old clients / direct API calls omit it and still
+   * join normally — they just won't accrue toward the global leaderboard.
+   */
+  playerId?: string | null;
 }
+
 
 export interface SubmitAnswerPayload {
   position: number;

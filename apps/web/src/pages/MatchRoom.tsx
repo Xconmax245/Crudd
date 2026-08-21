@@ -1,17 +1,26 @@
 
 
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, Link } from 'react-router';
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import { Users, Clock, Crown, Check, X, Wifi, WifiOff, Trophy, Target, Zap } from 'lucide-react';
-import type { LeaderboardEntry, PlayerMatchStats } from '@crudd/shared';
+import { Users, Clock, Crown, Check, X, Wifi, WifiOff, Trophy, Target, Zap, Globe, ArrowRight } from 'lucide-react';
+import type {
+  LeaderboardEntry,
+  PlayerMatchStats,
+  LeaderboardMeResponse,
+  LeaderboardPeriod,
+} from '@crudd/shared';
 
 import { useMatchEngine } from '../hooks/useMatchEngine';
 import { useSyncedTimer } from '../hooks/useSyncedTimer';
-import { getUsername } from '../lib/session';
+import { getUsername, peekPlayerId } from '../lib/session';
 import LoadingBlob from '../components/LoadingBlob';
 import { useTitle } from '../hooks/useTitle';
 import { ChatPanel } from '../components/ChatPanel';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 
 // --- Avatar Assignment -----------------------------------------------------
 
@@ -473,9 +482,10 @@ function ResultsView({
   onExit: () => void;
 }) {
   const reduceMotion = useReducedMotion();
-  const [tab, setTab] = useState<'scores' | 'stats'>('scores');
+  const [tab, setTab] = useState<'scores' | 'stats' | 'global'>('scores');
   const winner = leaderboard[0];
   const iWon = winner?.sessionId === sessionId;
+
   
   // EGG 4: Perfect Score detection
   const myStats = stats.find(s => s.sessionId === sessionId);
@@ -504,9 +514,9 @@ function ResultsView({
         )}
       </div>
 
-      {/* Scores / Stats toggle */}
+      {/* Scores / Stats / Global toggle */}
       <div className="flex gap-2 mb-4">
-        {(['scores', 'stats'] as const).map((t) => (
+        {(['scores', 'stats', 'global'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -514,16 +524,19 @@ function ResultsView({
               tab === t ? 'bg-ink text-cream' : 'bg-cream hover:bg-ink/5'
             }`}
           >
-            {t === 'scores' ? 'Scores' : 'Stats'}
+            {t === 'scores' ? 'Scores' : t === 'stats' ? 'Stats' : 'Global'}
           </button>
         ))}
       </div>
 
       {tab === 'scores' ? (
         <Leaderboard entries={leaderboard} sessionId={sessionId} isPerfectScore={iAmPerfect} />
-      ) : (
+      ) : tab === 'stats' ? (
         <StatsBoard stats={stats} sessionId={sessionId} />
+      ) : (
+        <GlobalRankBoard />
       )}
+
 
       <div className="mt-8 space-y-3">
         {isHost && (
@@ -580,9 +593,96 @@ function StatsBoard({ stats, sessionId }: { stats: PlayerMatchStats[]; sessionId
 }
 
 
+// --- Global rank peek (final screen) ---------------------------------------
+
+/**
+ * Shows the player's standing on the *global* leaderboard right after a match,
+ * so accumulated points feel meaningful. Reads the persistent soft-account id;
+ * if the player has never been ranked (brand-new device) we nudge them instead.
+ */
+function GlobalRankBoard() {
+  const [period, setPeriod] = useState<LeaderboardPeriod>('alltime');
+  const playerId = peekPlayerId();
+
+  const { data, isLoading, isError } = useQuery<LeaderboardMeResponse | null>({
+    queryKey: ['leaderboard-me', period, playerId],
+    enabled: !!playerId,
+    queryFn: async () => {
+      const res = await fetch(
+        `${API_URL}/api/leaderboard/me?playerId=${encodeURIComponent(playerId!)}&period=${period}`,
+      );
+      if (res.status === 404) return null; // not ranked this period yet
+      if (!res.ok) throw new Error('Failed to fetch rank');
+      return res.json();
+    },
+    // Points were just written server-side; don't serve a stale cached miss.
+    staleTime: 0,
+  });
+
+  const PERIODS: { key: LeaderboardPeriod; label: string }[] = [
+    { key: 'today', label: 'Today' },
+    { key: 'week', label: 'Week' },
+    { key: 'alltime', label: 'All Time' },
+  ];
+
+  return (
+    <div className="bg-white border-3 border-ink rounded-crudd shadow-hard p-6">
+      <div className="flex gap-2 mb-5">
+        {PERIODS.map((p) => (
+          <button
+            key={p.key}
+            onClick={() => setPeriod(p.key)}
+            className={`flex-1 py-1.5 rounded-crudd border-2 border-ink font-bold text-xs uppercase tracking-wider transition-colors ${
+              period === p.key ? 'bg-purple text-cream' : 'bg-cream hover:bg-ink/5'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {!playerId ? (
+        <p className="text-center font-bold opacity-60 py-8">
+          Play a full match to join the global leaderboard.
+        </p>
+      ) : isLoading ? (
+        <p className="text-center font-bold opacity-60 py-8 animate-pulse">Fetching your rank…</p>
+      ) : isError ? (
+        <p className="text-center font-bold text-red-500 py-8">Couldn't load your global rank.</p>
+      ) : !data ? (
+        <p className="text-center font-bold opacity-60 py-8">
+          Not ranked in this period yet — keep playing!
+        </p>
+      ) : (
+        <div className="text-center py-4">
+          <div className="text-xs font-bold uppercase tracking-widest opacity-50 mb-2">
+            Your global rank
+          </div>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Globe size={28} className="text-purple" />
+            <span className="font-display font-black text-5xl tabular-nums">#{data.rank}</span>
+          </div>
+          <div className="font-bold opacity-70">
+            {data.score.toLocaleString()} pts as {data.username || 'Guest'}
+          </div>
+        </div>
+      )}
+
+      <Link
+        to="/leaderboard"
+        className="mt-5 flex items-center justify-center gap-2 w-full py-2.5 rounded-crudd border-3 border-ink bg-yellow font-bold shadow-hard hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#0A0A0A] transition-all"
+      >
+        View Full Leaderboard <ArrowRight size={18} />
+      </Link>
+    </div>
+  );
+}
+
+
 // --- Shared leaderboard ----------------------------------------------------
 
 function Leaderboard({
+
   entries,
   sessionId,
   compact = false,
