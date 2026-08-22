@@ -27,10 +27,10 @@ const corsOrigins = (origin: string | undefined, cb: (err: Error | null, allow: 
     process.env.LANDING_URL || 'http://localhost:5173',
   ];
 
-  // In development, allow any localhost / 127.0.0.1 port so Vite's random
-  // port assignments don't break the fetch.
+  // Allow localhost in development, and ANY .vercel.app domain
   const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-  if (allowedOrigins.includes(origin) || (process.env.NODE_ENV !== 'production' && isLocalhost)) {
+  const isVercel = origin.endsWith('.vercel.app');
+  if (allowedOrigins.includes(origin) || (process.env.NODE_ENV !== 'production' && isLocalhost) || isVercel) {
     return cb(null, true);
   }
   return cb(null, false);
@@ -111,15 +111,8 @@ async function start() {
 
 
   // Attach the real-time match gateway to Fastify's underlying HTTP server.
-  // Socket.IO needs an array of allowed origins (or true for dev).
-  const socketCorsOrigins: string[] | boolean = process.env.NODE_ENV !== 'production'
-    ? true
-    : [
-        process.env.FRONTEND_URL || 'http://localhost:3000',
-        process.env.ADMIN_URL || 'http://localhost:3002',
-        process.env.LANDING_URL || 'http://localhost:5173',
-      ];
-  gateway = attachMatchGateway(fastify.server, socketCorsOrigins as string[]);
+  // Socket.IO accepts an origin function identical to fastify/cors.
+  gateway = attachMatchGateway(fastify.server, corsOrigins as any);
 
   try {
     await fastify.listen({ port, host: '0.0.0.0' });
